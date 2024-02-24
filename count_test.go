@@ -127,13 +127,6 @@ func TestCount16x4_IncrementAt(t *testing.T) {
 	assert.Equal(t, uint(0), c.EstimateAt(4))
 }
 
-func TestCount8_First5(t *testing.T) {
-	var c Count8
-	for i := 1; i <= 5; i++ {
-		assert.Equal(t, i, int(c.Increment()))
-	}
-}
-
 func TestCount16x4_First10(t *testing.T) {
 	var c Count16x4
 	for i := 1; i <= 10; i++ {

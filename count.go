@@ -2,7 +2,7 @@ package approx
 
 import (
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"sync/atomic"
 )
 
@@ -95,7 +95,7 @@ func (c *Count16) Increment() uint {
 
 // ------------------------------------ Count16x4 ------------------------------------
 
-// Count16x4 is a represents 2 16-bit approximate counters, using atomic operations
+// Count16x4 is a represents 4 16-bit approximate counters, using atomic operations
 // to increment the counter.
 type Count16x4 struct {
 	v atomic.Uint64
