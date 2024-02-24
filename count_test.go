@@ -36,6 +36,20 @@ func TestCount16_MeanError(t *testing.T) {
 	assert.Less(t, meanerr, 1.5, "mean error is %.2f%%", meanerr)
 }
 
+func TestCount16x4_MeanErrort(t *testing.T) {
+	const upper = 1e5
+	var c Count16x4
+
+	meanerr := 0.0
+	for i := 1; i <= int(upper); i++ {
+		c.Increment(1)
+		e := c.EstimateAt(1)
+		err := math.Abs(float64(e)-float64(i)) / float64(i) * 100
+		meanerr += err / upper
+	}
+	assert.Less(t, meanerr, 1.5, "mean error is %.2f%%", meanerr)
+}
+
 func main() {
 	const upper = 2e9 // 2 billion
 

@@ -85,6 +85,15 @@ func (c *Count16x4) Estimate() [4]uint {
 	}
 }
 
+// EstimateAt returns the estimated count for the counter at the given index.
+func (c *Count16x4) EstimateAt(i int) uint {
+	if i < 0 || i > 3 {
+		return 0
+	}
+
+	return c.Estimate()[i]
+}
+
 // Increment increments the counter at the given index.
 func (c *Count16x4) Increment(i int) {
 	if i < 0 || i > 3 {
