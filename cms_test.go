@@ -10,8 +10,8 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkCMS/update-24         	28204368	        42.90 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	165567184	         7.264 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/update-24         	22830267	        47.04 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	78269206	        15.12 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkCMS(b *testing.B) {
 	b.Run("update", func(b *testing.B) {
