@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -91,6 +92,40 @@ func TestCount8_Overflow(t *testing.T) {
 			c.Estimate()
 		}
 	})
+}
+
+func TestCount16x4_SizeOf(t *testing.T) {
+	var c Count16x4
+	assert.Equal(t, 8, int(unsafe.Sizeof(c)))
+}
+
+func TestCount16x4_IncrementAt(t *testing.T) {
+	const iterations = 100
+	const delta = iterations * 0.05
+
+	var c Count16x4
+	for i := 0; i < iterations; i++ {
+		c.IncrementAt(0)
+		c.IncrementAt(1)
+		c.IncrementAt(2)
+		c.IncrementAt(3)
+	}
+
+	// Test increments
+	assert.InDelta(t, uint(iterations), c.IncrementAt(0), delta)
+	assert.InDelta(t, uint(iterations), c.IncrementAt(1), delta)
+	assert.InDelta(t, uint(iterations), c.IncrementAt(2), delta)
+	assert.InDelta(t, uint(iterations), c.IncrementAt(3), delta)
+
+	// Test estimate
+	assert.InDelta(t, uint(iterations), c.EstimateAt(0), delta)
+	assert.InDelta(t, uint(iterations), c.EstimateAt(1), delta)
+	assert.InDelta(t, uint(iterations), c.EstimateAt(2), delta)
+	assert.InDelta(t, uint(iterations), c.EstimateAt(3), delta)
+
+	// Test out of bounds
+	assert.Equal(t, uint(0), c.IncrementAt(4))
+	assert.Equal(t, uint(0), c.EstimateAt(4))
 }
 
 func main() {

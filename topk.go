@@ -18,9 +18,6 @@ type Element struct {
 // An minheap is a min-heap of elements.
 type minheap []Element
 
-// func (e elementHeap) Len() int           { return len(e) }
-// func (e elementHeap) Less(i, j int) bool { return e[i].Count < e[j].Count }
-// func (e elementHeap) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 func (e *minheap) Len() int           { return len(*e) }
 func (e *minheap) Less(i, j int) bool { return (*e)[i].Count < (*e)[j].Count }
 func (e *minheap) Swap(i, j int)      { (*e)[i], (*e)[j] = (*e)[j], (*e)[i] }

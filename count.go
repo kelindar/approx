@@ -97,11 +97,13 @@ func (c *Count16) Increment() uint {
 
 // Count16x4 is a represents 2 16-bit approximate counters, using atomic operations
 // to increment the counter.
-type Count16x4 uint64
+type Count16x4 struct {
+	v atomic.Uint64
+}
 
 // Estimate returns the estimated count for all counters.
 func (c *Count16x4) Estimate() [4]uint {
-	v := atomic.LoadUint64((*uint64)(c))
+	v := (*c).v.Load()
 	return [4]uint{
 		uint(n16[v&0xFFFF]),
 		uint(n16[(v>>16)&0xFFFF]),
@@ -127,7 +129,7 @@ func (c *Count16x4) IncrementAt(i int) uint {
 
 	for {
 		// Load the counter
-		loaded := atomic.LoadUint64((*uint64)(c))
+		loaded := (*c).v.Load()
 		counter := Count16(loaded >> uint(i*16))
 		estimate := counter.Increment()
 
@@ -135,13 +137,19 @@ func (c *Count16x4) IncrementAt(i int) uint {
 		updated := (uint64(counter) << uint(i*16)) | (loaded & ^(0xFFFF << uint(i*16)))
 
 		// Try to swap the counters
-		if atomic.CompareAndSwapUint64((*uint64)(c), loaded, updated) {
+		if (*c).v.CompareAndSwap(loaded, updated) {
 			return estimate
 		}
 	}
 }
 
-// Reset resets the counter
-func (c *Count16x4) Reset() {
-	atomic.StoreUint64((*uint64)(c), 0)
+// Reset resets the counter to zero. It returns the estimated count for all counters.
+func (c *Count16x4) Reset() [4]uint {
+	v := (*c).v.Swap(0)
+	return [4]uint{
+		uint(n16[v&0xFFFF]),
+		uint(n16[(v>>16)&0xFFFF]),
+		uint(n16[(v>>32)&0xFFFF]),
+		uint(n16[(v>>48)&0xFFFF]),
+	}
 }

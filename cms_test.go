@@ -10,21 +10,6 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkCMS/update-24         	43634617	        27.83 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	123578206	         9.687 ns/op	       0 B/op	       0 allocs/op
-
-BenchmarkCMS/update-24         	 3840477	       306.3 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	19017402	        63.46 ns/op	       0 B/op	       0 allocs/op
-
-BenchmarkCMS/update-24         	 5331835	       217.6 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	18885265	        63.89 ns/op	       0 B/op	       0 allocs/op
-
-BenchmarkCMS/update-24         	 8651559	       128.6 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	18857191	        64.48 ns/op	       0 B/op	       0 allocs/op
-
-BenchmarkCMS/update-24         	26650675	        44.11 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	19071109	        63.56 ns/op	       0 B/op	       0 allocs/op
-
 BenchmarkCMS/update-24         	28204368	        42.90 ns/op	       0 B/op	       0 allocs/op
 BenchmarkCMS/count-24          	165567184	         7.264 ns/op	       0 B/op	       0 allocs/op
 */
@@ -146,4 +131,10 @@ func TestCounterParallel(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestCountMin_Size(t *testing.T) {
+	c, err := NewCountMin()
+	assert.NoError(t, err)
+	assert.Equal(t, 512, len(c.counts[0]))
 }
