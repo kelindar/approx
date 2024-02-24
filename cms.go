@@ -103,7 +103,7 @@ func (c *CountMin) UpdateHash(hash uint64) uint {
 		// hence we use stripe to find the index of the counter
 		idx := int(hx) % w
 		at := &c.counts[i][idx/stripe]
-		x = min(x, uint32(at.Increment(idx%stripe)))
+		x = min(x, uint32(at.IncrementAt(idx%stripe)))
 	}
 
 	return uint(x)

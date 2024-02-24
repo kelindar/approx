@@ -35,7 +35,7 @@ func BenchmarkCount(b *testing.B) {
 	b.Run("c16x4", func(b *testing.B) {
 		var c Count16x4
 		for i := 0; i < b.N; i++ {
-			c.Increment(1)
+			c.IncrementAt(1)
 		}
 	})
 }
@@ -74,7 +74,7 @@ func TestCount16x4_MeanErrort(t *testing.T) {
 
 	meanerr := 0.0
 	for i := 1; i <= int(upper); i++ {
-		c.Increment(1)
+		c.IncrementAt(1)
 		e := c.EstimateAt(1)
 		err := math.Abs(float64(e)-float64(i)) / float64(i) * 100
 		meanerr += err / upper

@@ -2,10 +2,10 @@ package approx
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"testing"
 
-	"github.com/kelindar/xxrand"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,7 +69,7 @@ func deck(n int) [][]byte {
 
 	// Randomly shuffle the values
 	for i := range values {
-		j := int(xxrand.Uint64n(uint64(n)))
+		j := int(rand.Int63n(int64(n)))
 		values[i], values[j] = values[j], values[i]
 	}
 

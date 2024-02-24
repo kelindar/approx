@@ -119,8 +119,8 @@ func (c *Count16x4) EstimateAt(i int) uint {
 	return c.Estimate()[i]
 }
 
-// Increment increments the counter at the given index.
-func (c *Count16x4) Increment(i int) uint {
+// IncrementAt increments the counter at the given index.
+func (c *Count16x4) IncrementAt(i int) uint {
 	if i < 0 || i > 3 {
 		return 0
 	}
