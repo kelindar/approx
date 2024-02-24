@@ -15,7 +15,7 @@ func n(v, a float64) float64 {
 
 // Precompute the lookup table for the 8-bit counter
 var n8 []float64 = func() []float64 {
-	const scale = 32
+	const scale = 31
 
 	lookup := make([]float64, math.MaxUint8+1)
 	for i := range lookup {
@@ -25,13 +25,13 @@ var n8 []float64 = func() []float64 {
 }()
 
 // Count8 is a 8-bit counter that uses Morris's algorithm to estimate the count. The
-// counter was tuned to count up to ~255 with relatively mean error rate of
+// counter was tuned to count up to ~100k with relatively mean error rate of
 // around ~10%.
 type Count8 uint8
 
 // Estimate returns the estimated count
 func (c Count8) Estimate() uint {
-	return uint(n8[c])
+	return max(uint(n8[c]), uint(c)) // special case for c=1
 }
 
 // Increment increments the counter
@@ -49,7 +49,7 @@ func (c *Count8) Increment() uint {
 		(*c)++
 	}
 
-	return uint(t1)
+	return max(uint(t1), uint(*c))
 }
 
 // ------------------------------------ Count16 ------------------------------------
@@ -72,7 +72,7 @@ type Count16 uint16
 
 // Estimate returns the estimated count
 func (c Count16) Estimate() uint {
-	return uint(n16[c])
+	return max(uint(n16[c]), uint(c)) // special case for c=1
 }
 
 // Increment increments the counter
@@ -90,7 +90,7 @@ func (c *Count16) Increment() uint {
 		(*c)++
 	}
 
-	return uint(t1)
+	return max(uint(t1), uint(*c))
 }
 
 // ------------------------------------ Count16x4 ------------------------------------
@@ -101,15 +101,26 @@ type Count16x4 struct {
 	v atomic.Uint64
 }
 
+// estimate16x4 returns the estimated count for all counters.
+func estimate16x4(v uint64) [4]uint {
+	e := [4]uint16{
+		uint16(v & 0xFFFF),
+		uint16((v >> 16) & 0xFFFF),
+		uint16((v >> 32) & 0xFFFF),
+		uint16((v >> 48) & 0xFFFF),
+	}
+
+	return [4]uint{
+		max(uint(n16[e[0]]), uint(e[0])),
+		max(uint(n16[e[1]]), uint(e[1])),
+		max(uint(n16[e[2]]), uint(e[2])),
+		max(uint(n16[e[3]]), uint(e[3])),
+	}
+}
+
 // Estimate returns the estimated count for all counters.
 func (c *Count16x4) Estimate() [4]uint {
-	v := (*c).v.Load()
-	return [4]uint{
-		uint(n16[v&0xFFFF]),
-		uint(n16[(v>>16)&0xFFFF]),
-		uint(n16[(v>>32)&0xFFFF]),
-		uint(n16[(v>>48)&0xFFFF]),
-	}
+	return estimate16x4((*c).v.Load())
 }
 
 // EstimateAt returns the estimated count for the counter at the given index.
@@ -145,11 +156,5 @@ func (c *Count16x4) IncrementAt(i int) uint {
 
 // Reset resets the counter to zero. It returns the estimated count for all counters.
 func (c *Count16x4) Reset() [4]uint {
-	v := (*c).v.Swap(0)
-	return [4]uint{
-		uint(n16[v&0xFFFF]),
-		uint(n16[(v>>16)&0xFFFF]),
-		uint(n16[(v>>32)&0xFFFF]),
-		uint(n16[(v>>48)&0xFFFF]),
-	}
+	return estimate16x4((*c).v.Swap(0))
 }

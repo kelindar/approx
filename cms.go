@@ -86,7 +86,6 @@ func (c *CountMin) UpdateString(item string) uint {
 
 // UpdateHash increments the counter for the given item
 func (c *CountMin) UpdateHash(hash uint64) uint {
-
 	lo := hash & ((1 << 32) - 1) // Lower 32 bits
 	hi := hash >> 32             // Upper 32 bits
 
