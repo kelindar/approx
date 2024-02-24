@@ -2,9 +2,8 @@ package approx
 
 import (
 	"math"
+	"math/rand"
 	"sync/atomic"
-
-	"github.com/kelindar/xxrand"
 )
 
 // n computes the approximate count based on Morris's algorithm
@@ -14,8 +13,16 @@ func n(v, a float64) float64 {
 
 // ------------------------------------ Count8 ------------------------------------
 
-// Scaling factor for the 8-bit counter
-const scale8 = 31
+// Precompute the lookup table for the 8-bit counter
+var n8 []float64 = func() []float64 {
+	const scale = 32
+
+	lookup := make([]float64, math.MaxUint8+1)
+	for i := range lookup {
+		lookup[i] = n(float64(i), scale)
+	}
+	return lookup
+}()
 
 // Count8 is a 8-bit counter that uses Morris's algorithm to estimate the count. The
 // counter was tuned to count up to ~255 with relatively mean error rate of
@@ -24,26 +31,39 @@ type Count8 uint8
 
 // Estimate returns the estimated count
 func (c Count8) Estimate() uint {
-	return uint(n(float64(c), scale8))
+	return uint(n8[c])
 }
 
 // Increment increments the counter
-func (c *Count8) Increment() {
-	if *c == math.MaxUint8 {
-		return // Overflow
+func (c *Count8) Increment() uint {
+	t0 := n8[*c]
+	t1 := n8[*c+1]
+
+	// Check for overflow
+	if *c >= math.MaxUint8 {
+		return uint(t0)
 	}
 
-	count := float64(*c)
-	delta := 1 / (n(count+1, scale8) - n(count, scale8))
-	if xxrand.Float64() < delta {
+	// Increment the counter depending on the delta
+	if delta := 1 / (t1 - t0); rand.Float64() < delta {
 		(*c)++
 	}
+
+	return uint(t1)
 }
 
 // ------------------------------------ Count16 ------------------------------------
 
-// Scaling factor for the 16-bit counter
-const scale16 = 5000
+// Precompute the lookup table for the 16-bit counter
+var n16 []float64 = func() []float64 {
+	const scale = 5000
+
+	lookup := make([]float64, math.MaxUint16+1)
+	for i := range lookup {
+		lookup[i] = n(float64(i), scale)
+	}
+	return lookup
+}()
 
 // Count16 is a 16-bit counter that uses Morris's algorithm to estimate the count. The
 // counter was tuned to count up to ~2 billion with relatively low mean error rate of
@@ -52,20 +72,25 @@ type Count16 uint16
 
 // Estimate returns the estimated count
 func (c Count16) Estimate() uint {
-	return uint(n(float64(c), scale16))
+	return uint(n16[c])
 }
 
 // Increment increments the counter
-func (c *Count16) Increment() {
-	if *c == math.MaxUint16 {
-		return // Overflow
+func (c *Count16) Increment() uint {
+	t0 := n16[*c]
+	t1 := n16[*c+1]
+
+	// Check for overflow
+	if *c >= math.MaxUint16 {
+		return uint(t0)
 	}
 
-	count := float64(*c)
-	delta := 1 / (n(count+1, scale16) - n(count, scale16))
-	if xxrand.Float64() < delta {
+	// Increment the counter depending on the delta
+	if delta := 1 / (t1 - t0); rand.Float64() < delta {
 		(*c)++
 	}
+
+	return uint(t1)
 }
 
 // ------------------------------------ Count16x4 ------------------------------------
@@ -78,10 +103,10 @@ type Count16x4 uint64
 func (c *Count16x4) Estimate() [4]uint {
 	v := atomic.LoadUint64((*uint64)(c))
 	return [4]uint{
-		uint(n(float64(v>>0), scale16)),
-		uint(n(float64(v>>16), scale16)),
-		uint(n(float64(v>>32), scale16)),
-		uint(n(float64(v>>48), scale16)),
+		uint(n16[v&0xFFFF]),
+		uint(n16[(v>>16)&0xFFFF]),
+		uint(n16[(v>>32)&0xFFFF]),
+		uint(n16[(v>>48)&0xFFFF]),
 	}
 }
 
@@ -95,23 +120,28 @@ func (c *Count16x4) EstimateAt(i int) uint {
 }
 
 // Increment increments the counter at the given index.
-func (c *Count16x4) Increment(i int) {
+func (c *Count16x4) Increment(i int) uint {
 	if i < 0 || i > 3 {
-		return
+		return 0
 	}
 
 	for {
 		// Load the counter
 		loaded := atomic.LoadUint64((*uint64)(c))
 		counter := Count16(loaded >> uint(i*16))
-		counter.Increment()
+		estimate := counter.Increment()
 
 		// Pack the counter back
 		updated := (uint64(counter) << uint(i*16)) | (loaded & ^(0xFFFF << uint(i*16)))
 
 		// Try to swap the counters
 		if atomic.CompareAndSwapUint64((*uint64)(c), loaded, updated) {
-			return
+			return estimate
 		}
 	}
+}
+
+// Reset resets the counter
+func (c *Count16x4) Reset() {
+	atomic.StoreUint64((*uint64)(c), 0)
 }

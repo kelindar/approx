@@ -10,10 +10,25 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkCounter/update-24         	43634617	        27.83 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCounter/count-24          	123578206	         9.687 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/update-24         	43634617	        27.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	123578206	         9.687 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkCMS/update-24         	 3840477	       306.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	19017402	        63.46 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkCMS/update-24         	 5331835	       217.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	18885265	        63.89 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkCMS/update-24         	 8651559	       128.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	18857191	        64.48 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkCMS/update-24         	26650675	        44.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	19071109	        63.56 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkCMS/update-24         	28204368	        42.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	165567184	         7.264 ns/op	       0 B/op	       0 allocs/op
 */
-func BenchmarkCounter(b *testing.B) {
+func BenchmarkCMS(b *testing.B) {
 	b.Run("update", func(b *testing.B) {
 		c, _ := NewCountMin()
 
@@ -66,8 +81,8 @@ func TestCounter_Simple(t *testing.T) {
 	c.UpdateString("bar")
 
 	assert.Equal(t, uint(3), c.CountTotal())
-	assert.Equal(t, uint(2), c.CountString("foo"))
-	assert.Equal(t, uint(1), c.CountString("bar"))
+	assert.InDelta(t, uint(2), c.CountString("foo"), 1)
+	assert.InDelta(t, uint(1), c.CountString("bar"), 1)
 }
 
 func TestCounter_Binary(t *testing.T) {
@@ -79,8 +94,8 @@ func TestCounter_Binary(t *testing.T) {
 	c.Update([]byte("bar"))
 
 	assert.Equal(t, uint(3), c.CountTotal())
-	assert.Equal(t, uint(2), c.Count([]byte("foo")))
-	assert.Equal(t, uint(1), c.Count([]byte("bar")))
+	assert.InDelta(t, uint(2), c.Count([]byte("foo")), 1)
+	assert.InDelta(t, uint(1), c.Count([]byte("bar")), 1)
 
 }
 
@@ -93,7 +108,7 @@ func TestCounter_Overflow(t *testing.T) {
 	}
 
 	assert.Equal(t, uint(1000), c.CountTotal())
-	assert.Equal(t, uint(1000), c.CountString("foo"))
+	assert.InDelta(t, uint(1000), c.CountString("foo"), 100)
 }
 
 func TestCounter_Validation(t *testing.T) {

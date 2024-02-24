@@ -11,19 +11,20 @@ import (
 const (
 	defaultEpsilon    = 0.001
 	defaultConfidence = 0.99
+	stripe            = 4
 )
 
 // CountMin is a sketch data structure for estimating the frequency of items in a stream
 type CountMin struct {
-	total  uint64   // total number of items seen
-	depth  int      // number of hash functions
-	width  int      // number of counters per hash function
-	counts []uint32 // 2D array of counters
+	total  uint64        // total number of items seen
+	depth  int           // number of hash functions
+	width  int           // number of counters per hash function
+	counts [][]Count16x4 // 2D array of counters
 }
 
 // NewCountMin creates a new CountMin sketch with default epsilon and confidence
 func NewCountMin() (*CountMin, error) {
-	return NewCountMinWithEstimates(defaultEpsilon, defaultConfidence)
+	return NewCountMinWithSize(4, 2048)
 }
 
 // NewCountMinWithEpsilon creates a new CountMin sketch with the given epsilon and delta. The epsilon
@@ -46,16 +47,25 @@ func NewCountMinWithEstimates(epsilon, confidence float64) (*CountMin, error) {
 // NewCountMinWithSize creates a new CountMin sketch with the given depth and width
 func NewCountMinWithSize(depth, width uint) (*CountMin, error) {
 	switch {
+	case depth%2 != 0:
+		return nil, errors.New("sketch: depth should be divisible by 2")
 	case depth > 128:
 		return nil, errors.New("sketch: depth should be less than 128")
+	case width%4 != 0:
+		return nil, errors.New("sketch: width should be a divisible by 4")
 	case width > math.MaxInt32:
 		return nil, errors.New("sketch: width should be less than MaxInt32")
+	}
+
+	mx := make([][]Count16x4, depth)
+	for i := range mx {
+		mx[i] = make([]Count16x4, width/stripe)
 	}
 
 	return &CountMin{
 		depth:  int(depth),
 		width:  int(width),
-		counts: make([]uint32, depth*width),
+		counts: mx,
 	}, nil
 }
 
@@ -76,6 +86,7 @@ func (c *CountMin) UpdateString(item string) uint {
 
 // UpdateHash increments the counter for the given item
 func (c *CountMin) UpdateHash(hash uint64) uint {
+
 	lo := hash & ((1 << 32) - 1) // Lower 32 bits
 	hi := hash >> 32             // Upper 32 bits
 
@@ -87,8 +98,12 @@ func (c *CountMin) UpdateHash(hash uint64) uint {
 	w := c.width
 	for i := 0; i < c.depth; i++ {
 		hx := lo + uint64(i)*hi
-		at := &c.counts[i*w+int(hx)%w]
-		x = min(x, atomic.AddUint32(at, 1))
+
+		// Calculate the index of the counter to increment (4 are packed),
+		// hence we use stripe to find the index of the counter
+		idx := int(hx) % w
+		at := &c.counts[i][idx/stripe]
+		x = min(x, uint32(at.Increment(idx%stripe)))
 	}
 
 	return uint(x)
@@ -113,8 +128,9 @@ func (c *CountMin) CountHash(hash uint64) uint {
 	w := c.width
 	for i := 0; i < c.depth && x > 0; i++ {
 		hx := lo + uint64(i)*hi
-		at := &c.counts[i*w+int(hx)%w]
-		x = min(x, atomic.LoadUint32(at))
+		idx := int(hx) % w
+		at := &c.counts[i][idx/stripe]
+		x = min(x, uint32(at.EstimateAt(idx%stripe)))
 	}
 	return uint(x)
 }
@@ -122,7 +138,9 @@ func (c *CountMin) CountHash(hash uint64) uint {
 // Reset sets all counters to zero
 func (c *CountMin) Reset() {
 	atomic.StoreUint64(&c.total, 0)
-	for i := range c.counts {
-		atomic.StoreUint32(&c.counts[i], 0)
+	for d, row := range c.counts {
+		for j := range row {
+			c.counts[d][j].Reset()
+		}
 	}
 }
