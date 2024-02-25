@@ -13,9 +13,9 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkCount/c8-24 			244527524	        4.877 ns/op			0 B/op	       0 allocs/op
-BenchmarkCount/c16-24         	249619900	        4.798 ns/op			0 B/op	       0 allocs/op
-BenchmarkCount/c16x4-24       	95331156	        12.50 ns/op			0 B/op	       0 allocs/op
+BenchmarkCount/c8-24 			301889146	         3.943 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCount/c16-24         	310057008	         3.832 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCount/c16x4-24       	280880466	         4.304 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkCount(b *testing.B) {
 	b.Run("c8", func(b *testing.B) {

@@ -14,9 +14,9 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkTopK/k=5-24         	20144570	        57.62 ns/op	       0 B/op	       0 allocs/op
-BenchmarkTopK/k=100-24       	19997566	        58.16 ns/op	       0 B/op	       0 allocs/op
-BenchmarkTopK/k=1000-24      	20048851	        58.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=5-24         	28556605	        38.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=100-24       	27524702	        39.73 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=1000-24      	27863173	        39.24 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkTopK(b *testing.B) {
 	const cardinality = 10000

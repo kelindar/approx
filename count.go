@@ -5,8 +5,9 @@ package approx
 
 import (
 	"math"
-	"math/rand/v2"
 	"sync/atomic"
+
+	_ "unsafe" // For go:linkname
 )
 
 // n computes the approximate count based on Morris's algorithm
@@ -14,16 +15,33 @@ func n(v, a float64) float64 {
 	return a * (math.Pow(1+1/a, v) - 1)
 }
 
+//go:linkname runtime_rand runtime.rand
+func runtime_rand() uint64
+
+// fastrand is a fast thread local random function built into the Go runtime
+// but not normally exposed.  On Linux x86_64, this is aesrand seeded by
+// /dev/urandom.
+//
+//go:linkname fastrand runtime.fastrand
+func fastrand() uint32
+
+// roll32 returns a random float32 in the range [0, 1)
+func roll32() float32 {
+	return float32(uint32(runtime_rand())<<8>>8) / (1 << 24)
+
+}
+
 // ------------------------------------ Count8 ------------------------------------
 
 const (
-	scale8    = 31     // scale factor
-	MaxCount8 = 101681 // n(math.MaxUint8, 31)
+	scale8    = 31                // scale factor
+	upper8    = math.MaxUint8 + 1 // upper bound
+	MaxCount8 = 101681            // n(math.MaxUint8, 31)
 )
 
 // Precompute the lookup table for the 8-bit counter
-var n8 []uint = func() []uint {
-	lookup := make([]uint, math.MaxUint8+1)
+var n8 [upper8]uint = func() [upper8]uint {
+	var lookup [upper8]uint
 	for i := range lookup {
 		lookup[i] = uint(n(float64(i), scale8))
 	}
@@ -32,11 +50,12 @@ var n8 []uint = func() []uint {
 }()
 
 // Precompute the delta table for the 8-bit counter
-var d8 []float32 = func() []float32 {
-	lookup := make([]float32, math.MaxUint8+1)
+var d8 [upper8]float32 = func() [upper8]float32 {
+	var lookup [upper8]float32
 	for i := 0; i < len(lookup)-1; i++ {
 		lookup[i] = float32(1 / (n(float64(i+1), scale8) - n(float64(i), scale8)))
 	}
+	lookup[math.MaxUint8] = 0 // no chance to increment
 	return lookup
 }()
 
@@ -52,28 +71,23 @@ func (c Count8) Estimate() uint {
 
 // Increment increments the counter
 func (c *Count8) Increment() uint {
-	if *c >= math.MaxUint8 {
-		return MaxCount8 // Overflow
-	}
-
-	// Increment the counter depending on the delta
-	if rand.Float32() < d8[*c] {
+	if roll32() < d8[*c] {
 		(*c)++
 	}
-
 	return n8[*c]
 }
 
 // ------------------------------------ Count16 ------------------------------------
 
 const (
-	scale16    = 5000       // scale factor
-	MaxCount16 = 2458655843 // n(math.MaxUint16, 5000)
+	scale16    = 5000               // scale factor
+	upper16    = math.MaxUint16 + 1 // upper bound
+	MaxCount16 = 2458655843         // n(math.MaxUint16, 5000)
 )
 
 // Precompute the lookup table for the 16-bit counter
-var n16 []uint = func() []uint {
-	lookup := make([]uint, math.MaxUint16+1)
+var n16 [upper16]uint = func() [upper16]uint {
+	var lookup [upper16]uint
 	for i := range lookup {
 		lookup[i] = uint(n(float64(i), scale16))
 	}
@@ -82,8 +96,8 @@ var n16 []uint = func() []uint {
 }()
 
 // Precompute the delta table for the 16-bit counter
-var d16 []float32 = func() []float32 {
-	lookup := make([]float32, math.MaxUint16+1)
+var d16 [upper16]float32 = func() [upper16]float32 {
+	var lookup [upper16]float32
 	for i := 0; i < len(lookup)-1; i++ {
 		lookup[i] = float32(1 / (n(float64(i+1), scale16) - n(float64(i), scale16)))
 	}
@@ -102,15 +116,9 @@ func (c Count16) Estimate() uint {
 
 // Increment increments the counter
 func (c *Count16) Increment() uint {
-	if *c >= math.MaxUint16 {
-		return MaxCount16 // Overflow
-	}
-
-	// Increment the counter depending on the delta
-	if rand.Float32() < d16[*c] {
+	if roll32() < d16[*c] {
 		(*c)++
 	}
-
 	return n16[*c]
 }
 
@@ -152,18 +160,25 @@ func (c *Count16x4) IncrementAt(i int) uint {
 		return 0
 	}
 
+	roll := roll32()     // roll the dice, we keep it constant in case we need to retry
+	shft := uint(i * 16) // number of bits to shift
 	for {
-		// Load the counter
 		loaded := c.v.Load()
-		counter := Count16(loaded >> uint(i*16))
-		estimate := counter.Increment()
 
-		// Pack the counter back
-		updated := (uint64(counter) << uint(i*16)) | (loaded & ^(0xFFFF << uint(i*16)))
+		// Inlined version of Count16.Increment. Early return allows us to avoid the
+		// cost of the atomic operation if we don't need to increment the counter.
+		counter := uint16(loaded >> shft)
+		if roll >= d16[counter] {
+			return n16[counter]
+		}
 
-		// Try to swap the counters
+		// Increment the counter and pack it back
+		counter++
+		updated := (uint64(counter) << shft) | (loaded & ^(0xFFFF << shft))
+
+		// Now try to swap the value atomically.
 		if c.v.CompareAndSwap(loaded, updated) {
-			return estimate
+			return n16[counter]
 		}
 	}
 }
