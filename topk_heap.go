@@ -13,14 +13,14 @@ func (h *minheap) Len() int           { return len(*h) }
 func (h *minheap) Less(i, j int) bool { return (*h)[i].Count < (*h)[j].Count }
 func (h *minheap) Swap(i, j int)      { (*h)[i], (*h)[j] = (*h)[j], (*h)[i] }
 
-// Push implements the minheap.Interface.
-func (h *minheap) Push(x any) {
-	*h = append(*h, x.(TopValue))
+// Push adds a new element to the heap.
+func (h *minheap) Push(x TopValue) {
+	*h = append(*h, x)
 	h.up(h.Len() - 1)
 }
 
-// Pop implements the minheap.Interface.
-func (h *minheap) Pop() any {
+// Pop returns the minimum element from the heap.
+func (h *minheap) Pop() TopValue {
 	n := h.Len() - 1
 	h.Swap(0, n)
 	h.down(0, n)
@@ -31,10 +31,7 @@ func (h *minheap) Pop() any {
 	return x
 }
 
-// Fix re-establishes the heap ordering after the element at index i has changed its value.
-// Changing the value of the element at index i and then calling Fix is equivalent to,
-// but less expensive than, calling [Remove](h, i) followed by a Push of the new value.
-// The complexity is O(log n) where n = h.Len().
+// Update updates the count of the element at index i.
 func (h minheap) Update(i int, count uint32) {
 	h[i].Count = count
 	if !h.down(i, len(h)) {
