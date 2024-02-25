@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package approx
 
 import (
@@ -14,8 +17,8 @@ func n(v, a float64) float64 {
 // ------------------------------------ Count8 ------------------------------------
 
 const (
-	scale8 = 31     // scale factor
-	n8max  = 101681 // n(math.MaxUint8, 31)
+	scale8    = 31     // scale factor
+	MaxCount8 = 101681 // n(math.MaxUint8, 31)
 )
 
 // Precompute the lookup table for the 8-bit counter
@@ -50,7 +53,7 @@ func (c Count8) Estimate() uint {
 // Increment increments the counter
 func (c *Count8) Increment() uint {
 	if *c >= math.MaxUint8 {
-		return n8max // Overflow
+		return MaxCount8 // Overflow
 	}
 
 	// Increment the counter depending on the delta
@@ -64,8 +67,8 @@ func (c *Count8) Increment() uint {
 // ------------------------------------ Count16 ------------------------------------
 
 const (
-	scale16 = 5000       // scale factor
-	n16max  = 2458655843 // n(math.MaxUint16, 5000)
+	scale16    = 5000       // scale factor
+	MaxCount16 = 2458655843 // n(math.MaxUint16, 5000)
 )
 
 // Precompute the lookup table for the 16-bit counter
@@ -100,7 +103,7 @@ func (c Count16) Estimate() uint {
 // Increment increments the counter
 func (c *Count16) Increment() uint {
 	if *c >= math.MaxUint16 {
-		return n16max // Overflow
+		return MaxCount16 // Overflow
 	}
 
 	// Increment the counter depending on the delta
@@ -131,7 +134,7 @@ func estimate16x4(v uint64) [4]uint {
 
 // Estimate returns the estimated count for all counters.
 func (c *Count16x4) Estimate() [4]uint {
-	return estimate16x4((*c).v.Load())
+	return estimate16x4(c.v.Load())
 }
 
 // EstimateAt returns the estimated count for the counter at the given index.
@@ -151,7 +154,7 @@ func (c *Count16x4) IncrementAt(i int) uint {
 
 	for {
 		// Load the counter
-		loaded := (*c).v.Load()
+		loaded := c.v.Load()
 		counter := Count16(loaded >> uint(i*16))
 		estimate := counter.Increment()
 
@@ -159,7 +162,7 @@ func (c *Count16x4) IncrementAt(i int) uint {
 		updated := (uint64(counter) << uint(i*16)) | (loaded & ^(0xFFFF << uint(i*16)))
 
 		// Try to swap the counters
-		if (*c).v.CompareAndSwap(loaded, updated) {
+		if c.v.CompareAndSwap(loaded, updated) {
 			return estimate
 		}
 	}

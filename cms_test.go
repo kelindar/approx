@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package approx
 
 import (
@@ -10,8 +13,8 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkCMS/update-24         	22830267	        47.04 ns/op	       0 B/op	       0 allocs/op
-BenchmarkCMS/count-24          	78269206	        15.12 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/update-24         	27886872	        42.47 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCMS/count-24          	69794222	        14.93 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkCMS(b *testing.B) {
 	b.Run("update", func(b *testing.B) {
@@ -65,9 +68,8 @@ func TestCounter_Simple(t *testing.T) {
 	c.UpdateString("foo")
 	c.UpdateString("bar")
 
-	assert.Equal(t, uint(3), c.CountTotal())
-	assert.InDelta(t, uint(2), c.CountString("foo"), 1)
-	assert.InDelta(t, uint(1), c.CountString("bar"), 1)
+	assert.Equal(t, uint(2), c.CountString("foo"))
+	assert.Equal(t, uint(1), c.CountString("bar"))
 }
 
 func TestCounter_Binary(t *testing.T) {
@@ -78,9 +80,8 @@ func TestCounter_Binary(t *testing.T) {
 	c.Update([]byte("foo"))
 	c.Update([]byte("bar"))
 
-	assert.Equal(t, uint(3), c.CountTotal())
-	assert.InDelta(t, uint(2), c.Count([]byte("foo")), 1)
-	assert.InDelta(t, uint(1), c.Count([]byte("bar")), 1)
+	assert.Equal(t, uint(2), c.Count([]byte("foo")))
+	assert.Equal(t, uint(1), c.Count([]byte("bar")))
 
 }
 
@@ -92,7 +93,6 @@ func TestCounter_Overflow(t *testing.T) {
 		c.UpdateString("foo")
 	}
 
-	assert.Equal(t, uint(1000), c.CountTotal())
 	assert.InDelta(t, uint(1000), c.CountString("foo"), 100)
 }
 

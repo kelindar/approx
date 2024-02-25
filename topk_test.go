@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package approx
 
 import (
@@ -11,9 +14,9 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkTopK/k=5-24         	18657644	        63.05 ns/op	       0 B/op	       0 allocs/op
-BenchmarkTopK/k=100-24       	18364376	        63.95 ns/op	       0 B/op	       0 allocs/op
-BenchmarkTopK/k=1000-24      	18544302	        63.63 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=5-24         	19146022	        60.48 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=100-24       	19256134	        60.79 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=1000-24      	19232679	        60.54 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkTopK(b *testing.B) {
 	const cardinality = 10000
@@ -26,7 +29,7 @@ func BenchmarkTopK(b *testing.B) {
 		b.Run(fmt.Sprintf("k=%d", k), func(b *testing.B) {
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				topk.Update(data[n%cardinality])
+				topk.UpdateString(data[n%cardinality])
 			}
 		})
 	}
@@ -42,10 +45,10 @@ func TestTopK(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, v := range deck(cardinality) {
-				topk.Update([]byte(v))
+				topk.UpdateString(v)
 			}
 
-			elements := topk.Elements()
+			elements := topk.Values()
 			assert.Len(t, elements, int(k))
 
 			x := 0
@@ -58,12 +61,31 @@ func TestTopK(t *testing.T) {
 	}
 }
 
+func TestTopK_Simple(t *testing.T) {
+	topk, err := NewTopK(5)
+	assert.NoError(t, err)
+
+	// Add 10 elements to the topk
+	for _, v := range deck(10) {
+		topk.UpdateString(v)
+	}
+
+	elements := topk.Values()
+	assert.Len(t, elements, 5)
+
+	// The top 5 elements should be 5, 6, 7, 8, 9
+	for i, e := range elements {
+		assert.Equal(t, strconv.Itoa(5+i), string(e.Value))
+		assert.Equal(t, uint32(5+i), e.Count)
+	}
+}
+
 // Generate a random set of values
-func deck(n int) [][]byte {
-	values := make([][]byte, 0, n)
+func deck(n int) []string {
+	values := make([]string, 0, n)
 	for i := 0; i < n; i++ {
 		for j := 0; j < i; j++ {
-			values = append(values, []byte(strconv.Itoa(i)))
+			values = append(values, strconv.Itoa(i))
 		}
 	}
 

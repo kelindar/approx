@@ -1,9 +1,11 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package approx
 
 import (
 	"errors"
 	"math"
-	"sync/atomic"
 
 	"github.com/zeebo/xxh3"
 )
@@ -16,7 +18,6 @@ const (
 
 // CountMin is a sketch data structure for estimating the frequency of items in a stream
 type CountMin struct {
-	total  uint64        // total number of items seen
 	depth  int           // number of hash functions
 	width  int           // number of counters per hash function
 	counts [][]Count16x4 // 2D array of counters
@@ -69,11 +70,6 @@ func NewCountMinWithSize(depth, width uint) (*CountMin, error) {
 	}, nil
 }
 
-// CountTotal returns the total number of items seen
-func (c *CountMin) CountTotal() uint {
-	return uint(atomic.LoadUint64(&c.total))
-}
-
 // Update increments the counter for the given item
 func (c *CountMin) Update(item []byte) uint {
 	return c.UpdateHash(xxh3.Hash(item))
@@ -88,9 +84,6 @@ func (c *CountMin) UpdateString(item string) uint {
 func (c *CountMin) UpdateHash(hash uint64) uint {
 	lo := hash & ((1 << 32) - 1) // Lower 32 bits
 	hi := hash >> 32             // Upper 32 bits
-
-	// Increment the total count, atomically
-	atomic.AddUint64(&c.total, 1)
 
 	// Find the minimum counter value and increment the counter at the given index
 	x := ^uint32(0)
@@ -136,7 +129,6 @@ func (c *CountMin) CountHash(hash uint64) uint {
 
 // Reset sets all counters to zero
 func (c *CountMin) Reset() {
-	atomic.StoreUint64(&c.total, 0)
 	for d, row := range c.counts {
 		for j := range row {
 			c.counts[d][j].Reset()
