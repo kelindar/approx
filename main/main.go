@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	const upper = 1e5
+	const upper = 1e7
 
 	var c approx.Count16
 	meanerr := 0.0
@@ -20,7 +20,7 @@ func main() {
 		err := math.Abs(float64(e)-float64(i)) / float64(i) * 100
 		meanerr += err
 
-		if i%1e3 == 0 {
+		if i%1e5 == 0 {
 			fmt.Printf("Actual: %v, Estimate: %v (#%d), Error: %.2f%%\n",
 				i, c.Estimate(), c, err,
 			)

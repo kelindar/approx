@@ -136,5 +136,5 @@ func TestCounterParallel(t *testing.T) {
 func TestCountMin_Size(t *testing.T) {
 	c, err := NewCountMin()
 	assert.NoError(t, err)
-	assert.Equal(t, 512, len(c.counts[0]))
+	assert.Equal(t, 256, len(c.counts[0]))
 }

@@ -7,7 +7,6 @@
 package approx
 
 import (
-	"container/heap"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -23,29 +22,6 @@ type TopValue struct {
 	Count uint32 `json:"count"` // The count of the value
 }
 
-// An minheap is a min-heap of top values, ordered by count. It is used to track
-// the top-k elements in a stream.
-type minheap []TopValue
-
-// Len, Less, Swap implement the sort.Interface.
-func (e *minheap) Len() int           { return len(*e) }
-func (e *minheap) Less(i, j int) bool { return (*e)[i].Count < (*e)[j].Count }
-func (e *minheap) Swap(i, j int)      { (*e)[i], (*e)[j] = (*e)[j], (*e)[i] }
-
-// Push implements the heap.Interface.
-func (e *minheap) Push(x any) {
-	*e = append(*e, x.(TopValue))
-}
-
-// Pop implements the heap.Interface.
-func (e *minheap) Pop() any {
-	old := *e
-	n := len(old)
-	x := old[n-1]
-	*e = old[0 : n-1]
-	return x
-}
-
 // TopK uses a Count-Min Sketch to calculate the top-K frequent elements in a
 // stream.
 type TopK struct {
@@ -53,23 +29,21 @@ type TopK struct {
 	min, size atomic.Uint32
 	maxSize   uint
 	cms       *CountMin
-	elements  minheap
+	heap      minheap
 }
 
 // NewTopK creates a new structure to track the top-k elements in a stream. The k parameter
 // specifies the number of elements to track.
 func NewTopK(k uint) (*TopK, error) {
-	cms, err := NewCountMinWithSize(4, 2048)
+	cms, err := NewCountMin()
 	if err != nil {
 		return nil, err
 	}
 
-	elements := make(minheap, 0, k)
-	heap.Init(&elements)
 	return &TopK{
-		cms:      cms,
-		maxSize:  k,
-		elements: elements,
+		cms:     cms,
+		maxSize: k,
+		heap:    make(minheap, 0, k),
 	}, nil
 }
 
@@ -99,30 +73,29 @@ func (t *TopK) insert(value []byte, hash uint64, count uint32) {
 	defer t.mu.Unlock()
 
 	// Same check as isTop, but protected by mutex to ensure consistency
-	if t.elements.Len() == int(t.maxSize) && count < t.elements[0].Count {
+	if t.heap.Len() == int(t.maxSize) && count < t.heap[0].Count {
 		return
 	}
 
 	// If the element is already in the top-k, update it's count
-	for i := range t.elements {
-		if elem := &t.elements[i]; hash == elem.hash {
-			elem.Count = count
-			heap.Fix(&t.elements, i)
+	for i := range t.heap {
+		if elem := &t.heap[i]; hash == elem.hash {
+			t.heap.Update(i, count)
 			//t.min.Store((*t.elements)[0].Count)
 			return
 		}
 	}
 
 	// Remove minimum-frequency element.
-	if t.elements.Len() == int(t.maxSize) {
-		heap.Pop(&t.elements)
+	if t.heap.Len() == int(t.maxSize) {
+		t.heap.Pop()
 	} else {
-		t.size.Store(uint32(t.elements.Len()))
+		t.size.Store(uint32(t.heap.Len()))
 	}
 
 	// Add element to top-k and update min count
-	heap.Push(&t.elements, TopValue{Value: value, hash: hash, Count: count})
-	t.min.Store(t.elements[0].Count)
+	t.heap.Push(TopValue{Value: value, hash: hash, Count: count})
+	t.min.Store(t.heap[0].Count)
 }
 
 // Values returns the top-k elements from lowest to highest frequency.
@@ -131,7 +104,7 @@ func (t *TopK) Values() []TopValue {
 
 	// Copy the elemenst into a new slice
 	t.mu.Lock()
-	for _, e := range t.elements {
+	for _, e := range t.heap {
 		if e.Count > 0 {
 			output = append(output, e)
 		}
@@ -149,8 +122,6 @@ func (t *TopK) Reset() *TopK {
 	defer t.mu.Unlock()
 
 	t.cms.Reset()
-	elements := make(minheap, 0, t.maxSize)
-	heap.Init(&elements)
-	t.elements = elements
+	t.heap.Reset()
 	return t
 }

@@ -25,7 +25,7 @@ type CountMin struct {
 
 // NewCountMin creates a new CountMin sketch with default epsilon and confidence
 func NewCountMin() (*CountMin, error) {
-	return NewCountMinWithSize(4, 2048)
+	return NewCountMinWithSize(4, 1024)
 }
 
 // NewCountMinWithEpsilon creates a new CountMin sketch with the given epsilon and delta. The epsilon
