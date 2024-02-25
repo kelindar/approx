@@ -51,12 +51,6 @@ func TestTopK(t *testing.T) {
 			elements := topk.Values()
 			assert.Len(t, elements, int(k))
 
-			fmt.Printf("-----------------\n")
-
-			for _, e := range elements {
-				fmt.Printf("v=%v, c=%v\n", string(e.Value), e.Count)
-			}
-
 			x := 0
 			for i := cardinality - k; i < cardinality; i++ {
 				//assert.Equal(t, strconv.Itoa(int(i)), string(elements[x].Value))
