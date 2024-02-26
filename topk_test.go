@@ -82,6 +82,21 @@ func TestTopK_Simple(t *testing.T) {
 	}
 }
 
+func TestTopK_Reset(t *testing.T) {
+	topk, err := NewTopK(5)
+	assert.NoError(t, err)
+
+	// Add 10 elements to the topk
+	for _, v := range deck(10) {
+		topk.UpdateString(v)
+	}
+
+	// Reset the topk
+	assert.Len(t, topk.Reset(), 5)
+	assert.Equal(t, uint(0), topk.Cardinality())
+	assert.Len(t, topk.Values(), 0)
+}
+
 // Generate a random set of values
 func deck(n int) []string {
 	values := make([]string, 0, n)

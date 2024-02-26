@@ -39,6 +39,15 @@ func (h minheap) Update(i int, count uint32) {
 	}
 }
 
+// Clone clones the minheap into dst.
+func (h minheap) Clone(dst *minheap) {
+	for _, e := range h {
+		if e.Count > 0 {
+			(*dst) = append(*dst, e)
+		}
+	}
+}
+
 func (h minheap) up(j int) {
 	for {
 		i := (j - 1) / 2 // parent

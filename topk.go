@@ -105,14 +105,8 @@ func (t *TopK) tryInsert(value []byte, hash uint64, count uint32) {
 // Values returns the top-k elements from lowest to highest frequency.
 func (t *TopK) Values() []TopValue {
 	output := make(minheap, 0, t.size)
-
-	// Copy the elemenst into a new slice
 	t.mu.Lock()
-	for _, e := range t.heap {
-		if e.Count > 0 {
-			output = append(output, e)
-		}
-	}
+	t.heap.Clone(&output)
 	t.mu.Unlock()
 
 	// Sort the elements before returning
@@ -129,11 +123,18 @@ func (t *TopK) Cardinality() uint {
 }
 
 // Reset restores the TopK to its original state.
-func (t *TopK) Reset() *TopK {
+func (t *TopK) Reset() []TopValue {
+	output := make(minheap, 0, t.size)
 	t.mu.Lock()
-	defer t.mu.Unlock()
+	{ // Clone and reset the heap
+		t.heap.Clone(&output)
+		t.cms.Reset()
+		t.heap.Reset()
+		t.hll = hyperloglog.New()
+	}
+	t.mu.Unlock()
 
-	t.cms.Reset()
-	t.heap.Reset()
-	return t
+	// Sort the elements before returning
+	sort.Sort(&output)
+	return output
 }

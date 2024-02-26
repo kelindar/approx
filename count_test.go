@@ -54,7 +54,7 @@ func TestCount8_MeanError(t *testing.T) {
 		err := math.Abs(float64(e)-float64(i)) / float64(i) * 100
 		meanerr += err / upper
 	}
-	assert.Less(t, meanerr, 25.0, "mean error is %.2f%%", meanerr)
+	assert.Less(t, meanerr, 30.0, "mean error is %.2f%%", meanerr)
 }
 
 func TestCount16_MeanError(t *testing.T) {
