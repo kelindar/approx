@@ -93,10 +93,31 @@ func TestTopK_Reset(t *testing.T) {
 		}
 
 		// Reset the topk
-		assert.Len(t, topk.Reset(), 5)
+		out, n := topk.Reset(5)
+		assert.Len(t, out, 5)
+		assert.InDelta(t, 10, int(n), 1)
 		assert.Equal(t, uint(0), topk.Cardinality())
 		assert.Len(t, topk.Values(), 0)
 		assert.Equal(t, 0, int(topk.Cardinality()))
+	}
+}
+
+func TestTopK_Race(t *testing.T) {
+	topk, err := NewTopK(5)
+	assert.NoError(t, err)
+
+	// Check for multiple resets
+	for i := 0; i < 20; i++ {
+		go func() {
+			assert.NotPanics(t, func() {
+				for _, v := range deck(10) {
+					topk.UpdateString(v)
+				}
+
+				topk.Values()
+				topk.Reset(5)
+			})
+		}()
 	}
 }
 

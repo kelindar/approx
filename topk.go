@@ -15,7 +15,7 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-// TopValue represents a value and its associated count.s
+// TopValue represents a value and its associated count.
 type TopValue struct {
 	hash  uint64 `json:"-"`     // The hash of the value
 	Value []byte `json:"value"` // The associated value
@@ -26,7 +26,6 @@ type TopValue struct {
 // stream.
 type TopK struct {
 	mu   sync.Mutex
-	size uint
 	heap minheap
 	cms  *CountMin
 	hll  *hyperloglog.Sketch
@@ -42,7 +41,6 @@ func NewTopK(k uint) (*TopK, error) {
 
 	return &TopK{
 		cms:  cms,
-		size: k,
 		heap: make(minheap, 0, k),
 		hll:  hyperloglog.New(),
 	}, nil
@@ -65,11 +63,6 @@ func (t *TopK) Update(value []byte) {
 	t.tryInsert(value, hash, count)
 }
 
-// isTop indicates if the given frequency falls within the top-k heap.
-func (t *TopK) isTop(count uint32) bool {
-	return t.heap.Len() < int(t.size) || count >= t.heap[0].Count
-}
-
 // tryInsert adds the data to the top-k heap. If the data is already an element,
 // the frequency is updated. If the heap already has k elements, the element
 // with the minimum frequency is removed.
@@ -79,9 +72,12 @@ func (t *TopK) tryInsert(value []byte, hash uint64, count uint32) {
 
 	// Add the element to HyperLogLog
 	t.hll.InsertHash(hash)
+	if cap(t.heap) == 0 {
+		return // no tracking
+	}
 
 	// If the element is not in the top-k, skip
-	if !t.isTop(count) {
+	if len(t.heap) == cap(t.heap) && count < t.heap[0].Count {
 		return
 	}
 
@@ -94,7 +90,7 @@ func (t *TopK) tryInsert(value []byte, hash uint64, count uint32) {
 	}
 
 	// Remove minimum-frequency element.
-	if t.heap.Len() == int(t.size) {
+	if len(t.heap) == cap(t.heap) {
 		t.heap.Pop()
 	}
 
@@ -104,8 +100,8 @@ func (t *TopK) tryInsert(value []byte, hash uint64, count uint32) {
 
 // Values returns the top-k elements from lowest to highest frequency.
 func (t *TopK) Values() []TopValue {
-	output := make(minheap, 0, t.size)
 	t.mu.Lock()
+	output := make(minheap, 0, cap(t.heap))
 	t.heap.Clone(&output)
 	t.mu.Unlock()
 
@@ -123,19 +119,32 @@ func (t *TopK) Cardinality() uint {
 }
 
 // Reset restores the TopK to its original state. The function returns the top-k
-// elements and their counts.
-func (t *TopK) Reset() []TopValue {
-	output := make(minheap, 0, t.size)
+// elements and their counts as well as the estimated cardinality of the stream.
+func (t *TopK) Reset(k int) ([]TopValue, uint) {
 	t.mu.Lock()
-	{ // Clone and reset the heap
-		t.heap.Clone(&output)
-		t.cms.Reset()
-		t.heap.Reset()
-		t.hll = hyperloglog.New()
-	}
+	output := make(minheap, 0, cap(t.heap))
+	n := t.hll.Estimate() // Estimate the cardinality
+	t.heap.Clone(&output) // Clone the top-k elements
+	t.resize(k)           // Resize the top-k heap
 	t.mu.Unlock()
 
 	// Sort the elements before returning
 	sort.Sort(&output)
-	return output
+	return output, uint(n)
+}
+
+// reset resizes the top-k heap and resets the Count-Min Sketch and HyperLogLog.
+func (t *TopK) resize(k int) {
+	switch {
+	case k <= 0:
+		t.heap = make(minheap, 0, 0)
+	case k != cap(t.heap):
+		t.heap = make(minheap, 0, k)
+	case k == cap(t.heap):
+		t.heap.Reset()
+	}
+
+	// Reset the Count-Min Sketch and HyperLogLog
+	t.cms.Reset()
+	t.hll = hyperloglog.New()
 }

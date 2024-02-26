@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	const upper = 1e7
+	const upper = 1e8
 
 	var c approx.Count16
 	meanerr := 0.0

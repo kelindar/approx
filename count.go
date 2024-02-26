@@ -19,7 +19,7 @@ func n(v, a float64) float64 {
 func runtime_rand() uint64
 
 // fastrand is a fast thread local random function built into the Go runtime
-// but not normally exposed.  On Linux x86_64, this is aesrand seeded by
+// but not normally exposed. On Linux x86_64, this is aesrand seeded by
 // /dev/urandom.
 //
 //go:linkname fastrand runtime.fastrand
@@ -33,9 +33,8 @@ func roll32() float32 {
 // ------------------------------------ Count8 ------------------------------------
 
 const (
-	scale8    = 31                // scale factor
-	upper8    = math.MaxUint8 + 1 // upper bound
-	MaxCount8 = 101681            // n(math.MaxUint8, 31)
+	scale8 = 31                // scale factor
+	upper8 = math.MaxUint8 + 1 // upper bound
 )
 
 // Precompute the lookup table for the 8-bit counter
@@ -79,9 +78,8 @@ func (c *Count8) Increment() uint {
 // ------------------------------------ Count16 ------------------------------------
 
 const (
-	scale16    = 5000               // scale factor
-	upper16    = math.MaxUint16 + 1 // upper bound
-	MaxCount16 = 2458655843         // n(math.MaxUint16, 5000)
+	scale16 = 5250               // scale factor
+	upper16 = math.MaxUint16 + 1 // upper bound
 )
 
 // Precompute the lookup table for the 16-bit counter
