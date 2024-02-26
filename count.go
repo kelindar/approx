@@ -160,7 +160,11 @@ func (c *Count16x4) IncrementAt(i int) uint {
 		return 0
 	}
 
-	roll := roll32()     // roll the dice, we keep it constant in case we need to retry
+	return c.incrementAt(i, roll32())
+}
+
+// IncrementAt increments the counter at the given index with a given probability of success.
+func (c *Count16x4) incrementAt(i int, roll float32) uint {
 	shft := uint(i * 16) // number of bits to shift
 	for {
 		loaded := c.v.Load()

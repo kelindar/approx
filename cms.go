@@ -88,6 +88,7 @@ func (c *CountMin) UpdateHash(hash uint64) uint {
 	// Find the minimum counter value and increment the counter at the given index
 	x := ^uint32(0)
 	w := c.width
+	r := roll32() // Keep same random value for all counters
 	for i := 0; i < c.depth; i++ {
 		hx := lo + uint64(i)*hi
 
@@ -95,7 +96,7 @@ func (c *CountMin) UpdateHash(hash uint64) uint {
 		// hence we use stripe to find the index of the counter
 		idx := int(hx) % w
 		at := &c.counts[i][idx/stripe]
-		x = min(x, uint32(at.IncrementAt(idx%stripe)))
+		x = min(x, uint32(at.incrementAt(idx%stripe, r)))
 	}
 
 	return uint(x)
