@@ -17,7 +17,7 @@ import (
 
 // TopValue represents a value and its associated count.s
 type TopValue struct {
-	hash  uint64 // The hash of the value
+	hash  uint64 `json:"-"`     // The hash of the value
 	Value []byte `json:"value"` // The associated value
 	Count uint32 `json:"count"` // The count of the value
 }
@@ -122,7 +122,8 @@ func (t *TopK) Cardinality() uint {
 	return uint(t.hll.Estimate())
 }
 
-// Reset restores the TopK to its original state.
+// Reset restores the TopK to its original state. The function returns the top-k
+// elements and their counts.
 func (t *TopK) Reset() []TopValue {
 	output := make(minheap, 0, t.size)
 	t.mu.Lock()
