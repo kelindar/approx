@@ -71,22 +71,21 @@ func NewCountMinWithSize(depth, width uint) (*CountMin, error) {
 }
 
 // Update increments the counter for the given item
-func (c *CountMin) Update(item []byte) uint {
+func (c *CountMin) Update(item []byte) bool {
 	return c.UpdateHash(xxh3.Hash(item))
 }
 
 // UpdateString increments the counter for the given item
-func (c *CountMin) UpdateString(item string) uint {
+func (c *CountMin) UpdateString(item string) bool {
 	return c.UpdateHash(xxh3.HashString(item))
 }
 
 // UpdateHash increments the counter for the given item
-func (c *CountMin) UpdateHash(hash uint64) uint {
+func (c *CountMin) UpdateHash(hash uint64) (updated bool) {
 	lo := hash & ((1 << 32) - 1) // Lower 32 bits
 	hi := hash >> 32             // Upper 32 bits
 
 	// Find the minimum counter value and increment the counter at the given index
-	x := ^uint32(0)
 	w := c.width
 	r := roll32() // Keep same random value for all counters
 	for i := 0; i < c.depth; i++ {
@@ -96,10 +95,12 @@ func (c *CountMin) UpdateHash(hash uint64) uint {
 		// hence we use stripe to find the index of the counter
 		idx := int(hx) % w
 		at := &c.counts[i][idx/stripe]
-		x = min(x, uint32(at.incrementAt(idx%stripe, r)))
+		if at.incrementAt(idx%stripe, r) {
+			updated = true
+		}
 	}
 
-	return uint(x)
+	return updated
 }
 
 // Count returns the estimated frequency of the given item

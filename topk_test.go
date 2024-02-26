@@ -14,9 +14,9 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkTopK/k=5-24         	28556605	        38.55 ns/op	       0 B/op	       0 allocs/op
-BenchmarkTopK/k=100-24       	27524702	        39.73 ns/op	       0 B/op	       0 allocs/op
-BenchmarkTopK/k=1000-24      	27863173	        39.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=5-24         	72101881	        16.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=100-24       	71823086	        16.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTopK/k=1000-24      	72941390	        16.53 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkTopK(b *testing.B) {
 	const cardinality = 10000
@@ -50,6 +50,7 @@ func TestTopK(t *testing.T) {
 
 			elements := topk.Values()
 			assert.Len(t, elements, int(k))
+			assert.InDelta(t, cardinality, int(topk.Cardinality()), 1)
 
 			x := 0
 			for i := cardinality - k; i < cardinality; i++ {
@@ -72,6 +73,7 @@ func TestTopK_Simple(t *testing.T) {
 
 	elements := topk.Values()
 	assert.Len(t, elements, 5)
+	assert.InDelta(t, 10, int(topk.Cardinality()), 1)
 
 	// The top 5 elements should be 5, 6, 7, 8, 9
 	for i, e := range elements {

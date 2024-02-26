@@ -106,6 +106,13 @@ func TestCount16x4_IncrementAt(t *testing.T) {
 	const delta = iterations * 0.05
 
 	var c Count16x4
+
+	// Test increments
+	assert.True(t, c.IncrementAt(0))
+	assert.True(t, c.IncrementAt(1))
+	assert.True(t, c.IncrementAt(2))
+	assert.True(t, c.IncrementAt(3))
+
 	for i := 0; i < iterations; i++ {
 		c.IncrementAt(0)
 		c.IncrementAt(1)
@@ -113,26 +120,23 @@ func TestCount16x4_IncrementAt(t *testing.T) {
 		c.IncrementAt(3)
 	}
 
-	// Test increments
-	assert.InDelta(t, uint(iterations), c.IncrementAt(0), delta)
-	assert.InDelta(t, uint(iterations), c.IncrementAt(1), delta)
-	assert.InDelta(t, uint(iterations), c.IncrementAt(2), delta)
-	assert.InDelta(t, uint(iterations), c.IncrementAt(3), delta)
-
 	// Test estimate
 	assert.InDelta(t, uint(iterations), c.EstimateAt(0), delta)
 	assert.InDelta(t, uint(iterations), c.EstimateAt(1), delta)
 	assert.InDelta(t, uint(iterations), c.EstimateAt(2), delta)
 	assert.InDelta(t, uint(iterations), c.EstimateAt(3), delta)
+}
 
-	// Test out of bounds
-	assert.Equal(t, uint(0), c.IncrementAt(4))
+func TestCount16x4_Bounds(t *testing.T) {
+	var c Count16x4
+	assert.False(t, c.IncrementAt(4))
 	assert.Equal(t, uint(0), c.EstimateAt(4))
 }
 
 func TestCount16x4_First10(t *testing.T) {
 	var c Count16x4
 	for i := 1; i <= 10; i++ {
-		assert.Equal(t, i, int(c.IncrementAt(0)))
+		assert.True(t, c.IncrementAt(0))
+		assert.Equal(t, i, int(c.EstimateAt(0)))
 	}
 }

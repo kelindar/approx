@@ -28,7 +28,6 @@ func fastrand() uint32
 // roll32 returns a random float32 in the range [0, 1)
 func roll32() float32 {
 	return float32(uint32(runtime_rand())<<8>>8) / (1 << 24)
-
 }
 
 // ------------------------------------ Count8 ------------------------------------
@@ -154,17 +153,18 @@ func (c *Count16x4) EstimateAt(i int) uint {
 	return c.Estimate()[i]
 }
 
-// IncrementAt increments the counter at the given index.
-func (c *Count16x4) IncrementAt(i int) uint {
+// IncrementAt increments the counter at the given index. It returns true if the counter
+// estimate was updated.
+func (c *Count16x4) IncrementAt(i int) bool {
 	if i < 0 || i > 3 {
-		return 0
+		return false
 	}
 
 	return c.incrementAt(i, roll32())
 }
 
 // IncrementAt increments the counter at the given index with a given probability of success.
-func (c *Count16x4) incrementAt(i int, roll float32) uint {
+func (c *Count16x4) incrementAt(i int, roll float32) bool {
 	shft := uint(i * 16) // number of bits to shift
 	for {
 		loaded := c.v.Load()
@@ -173,7 +173,7 @@ func (c *Count16x4) incrementAt(i int, roll float32) uint {
 		// cost of the atomic operation if we don't need to increment the counter.
 		counter := uint16(loaded >> shft)
 		if roll >= d16[counter] {
-			return n16[counter]
+			return false
 		}
 
 		// Increment the counter and pack it back
@@ -182,7 +182,7 @@ func (c *Count16x4) incrementAt(i int, roll float32) uint {
 
 		// Now try to swap the value atomically.
 		if c.v.CompareAndSwap(loaded, updated) {
-			return n16[counter]
+			return true
 		}
 	}
 }
