@@ -9,7 +9,6 @@ package approx
 import (
 	"sort"
 	"sync"
-	"unsafe"
 
 	"github.com/axiomhq/hyperloglog"
 	"github.com/zeebo/xxh3"
@@ -18,7 +17,7 @@ import (
 // TopValue represents a value and its associated count.
 type TopValue struct {
 	hash  uint64 `json:"-"`     // The hash of the value
-	Value []byte `json:"value"` // The associated value
+	Value string `json:"value"` // The associated value
 	Count uint32 `json:"count"` // The count of the value
 }
 
@@ -46,14 +45,9 @@ func NewTopK(k uint) (*TopK, error) {
 	}, nil
 }
 
-// UpdateString adds the string value to the Count-Min Sketch and updates the top-k heap.
-func (t *TopK) UpdateString(value string) {
-	t.Update(unsafe.Slice(unsafe.StringData(value), len(value)))
-}
-
 // Update adds the binary value to Count-Min Sketch and updates the top-k elements.
-func (t *TopK) Update(value []byte) {
-	hash := xxh3.Hash(value)
+func (t *TopK) Update(value string) {
+	hash := xxh3.HashString(value)
 	if updated := t.cms.UpdateHash(hash); !updated {
 		return // Estimate hasn't changed, skip
 	}
@@ -66,7 +60,7 @@ func (t *TopK) Update(value []byte) {
 // tryInsert adds the data to the top-k heap. If the data is already an element,
 // the frequency is updated. If the heap already has k elements, the element
 // with the minimum frequency is removed.
-func (t *TopK) tryInsert(value []byte, hash uint64, count uint32) {
+func (t *TopK) tryInsert(value string, hash uint64, count uint32) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -94,8 +88,11 @@ func (t *TopK) tryInsert(value []byte, hash uint64, count uint32) {
 		t.heap.Pop()
 	}
 
+	// Copy the string in case the caller reuses the buffer
+	clone := string(append([]byte(nil), value...))
+
 	// Add element to top-k and update min count
-	t.heap.Push(TopValue{Value: value, hash: hash, Count: count})
+	t.heap.Push(TopValue{Value: clone, hash: hash, Count: count})
 }
 
 // Values returns the top-k elements from lowest to highest frequency.

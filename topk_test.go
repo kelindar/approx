@@ -4,6 +4,7 @@
 package approx
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -29,7 +30,7 @@ func BenchmarkTopK(b *testing.B) {
 		b.Run(fmt.Sprintf("k=%d", k), func(b *testing.B) {
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				topk.UpdateString(data[n%cardinality])
+				topk.Update(data[n%cardinality])
 			}
 		})
 	}
@@ -45,7 +46,7 @@ func TestTopK(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, v := range deck(cardinality) {
-				topk.UpdateString(v)
+				topk.Update(v)
 			}
 
 			elements := topk.Values()
@@ -68,7 +69,7 @@ func TestTopK_Simple(t *testing.T) {
 
 	// Add 10 elements to the topk
 	for _, v := range deck(10) {
-		topk.UpdateString(v)
+		topk.Update(v)
 	}
 
 	elements := topk.Values()
@@ -89,7 +90,7 @@ func TestTopK_Reset(t *testing.T) {
 	// Check for multiple resets
 	for i := 0; i < 10; i++ {
 		for _, v := range deck(10) {
-			topk.UpdateString(v)
+			topk.Update(v)
 		}
 
 		// Reset the topk
@@ -111,7 +112,7 @@ func TestTopK_Race(t *testing.T) {
 		go func() {
 			assert.NotPanics(t, func() {
 				for _, v := range deck(10) {
-					topk.UpdateString(v)
+					topk.Update(v)
 				}
 
 				topk.Values()
@@ -119,6 +120,30 @@ func TestTopK_Race(t *testing.T) {
 			})
 		}()
 	}
+}
+
+func TestTopK_JSON(t *testing.T) {
+	topk, err := NewTopK(5)
+	assert.NoError(t, err)
+
+	// Add 10 elements to the topk
+	for _, v := range deck(10) {
+		topk.Update(v)
+	}
+
+	values := topk.Values()
+	assert.Len(t, values, 5)
+
+	// Marshal the output
+	encoded, err := json.Marshal(values)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `[
+		{"value":"5","count":5},
+		{"value":"6","count":6},
+		{"value":"7","count":7},
+		{"value":"8","count":8},
+		{"value":"9","count":9}
+	]`, string(encoded))
 }
 
 // Generate a random set of values
